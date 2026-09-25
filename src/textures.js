@@ -157,5 +157,39 @@ export function createTextures(renderer) {
     g.addColorStop(0, '#ffffff'); g.addColorStop(.32, 'rgba(255,255,255,.96)'); g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g; ctx.fillRect(0, 0, s, s);
   });
-  return { terrain, bark, stone, wood, leaf, blossom, petal, grass, noise, shadow, snow };
+  const fur = make(128, (ctx, s) => {
+    ctx.fillStyle = '#f3f3ef'; ctx.fillRect(0, 0, s, s);
+    for (let i = 0; i < 1500; i++) {
+      const x = rng() * s, y = rng() * s, len = 3 + rng() * 8, a = -Math.PI / 2 + (rng() - .5) * .75;
+      const shade = 210 + rng() * 36;
+      ctx.strokeStyle = `rgba(${shade},${shade},${shade - 6},${0.08 + rng() * .14})`;
+      ctx.lineWidth = 0.6 + rng() * 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 220; i++) {
+      const x = rng() * s, y = rng() * s, r = 0.6 + rng() * 1.6;
+      ctx.fillStyle = `rgba(255,255,255,${0.03 + rng() * 0.05})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+  fur.repeat.set(2, 2);
+  const feather = make(64, (ctx, s) => {
+    ctx.clearRect(0, 0, s, s);
+    const g = ctx.createLinearGradient(0, s, s, 0);
+    g.addColorStop(0, '#3e4654'); g.addColorStop(.55, '#a7b0bc'); g.addColorStop(1, '#f2f4f6');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(6, 56); ctx.quadraticCurveTo(20, 8, 58, 8); ctx.quadraticCurveTo(42, 42, 6, 56); ctx.fill();
+    ctx.strokeStyle = 'rgba(34,40,48,.35)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(7, 55); ctx.lineTo(54, 10); ctx.stroke();
+    for (let i = 0; i < 6; i++) {
+      const x = 16 + i * 6, y = 46 - i * 5;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 6, y - 11);
+      ctx.moveTo(x, y); ctx.lineTo(x + 10, y + 2); ctx.stroke();
+    }
+  });
+  return { terrain, bark, stone, wood, leaf, blossom, petal, grass, noise, shadow, snow, fur, feather };
 }

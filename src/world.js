@@ -296,9 +296,118 @@ export function buildWorld(scene, textures, shared) {
   const snowMat = new THREE.PointsMaterial({ map: textures.snow, size: .18, transparent: true, depthWrite: false, opacity: 0, color: '#eef5ff' });
   const snow = new THREE.Points(snowGeo, snowMat); snow.name = 'Textured snow particles'; world.add(snow);
 
+  // Two playful bears appear only in cold snowy weather.
+  const makeBear = (name, furColor, accentColor, size = 1) => {
+    const bear = new THREE.Group(); bear.name = name;
+    const furMat = new THREE.MeshStandardMaterial({
+      map: textures.fur, color: furColor, roughness: .96, metalness: 0, flatShading: true
+    });
+    const accentMat = new THREE.MeshStandardMaterial({
+      map: textures.fur, color: accentColor, roughness: .98, flatShading: true
+    });
+    const darkMat = new THREE.MeshStandardMaterial({ color: '#25272a', roughness: .95, flatShading: true });
+    const clawMat = new THREE.MeshStandardMaterial({ color: '#3b3630', roughness: 1, flatShading: true });
+
+    const add = (parent, geo, mat, x, y, z, sx = 1, sy = 1, sz = 1) => {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y, z); mesh.scale.set(sx, sy, sz);
+      mesh.castShadow = mesh.receiveShadow = true; parent.add(mesh); return mesh;
+    };
+    const poly = r => new THREE.DodecahedronGeometry(r, 1);
+
+    // Long, low torso and a pronounced shoulder hump keep the silhouette bear-like.
+    add(bear, poly(.78), furMat, -.18, 1.08, 0, 1.72, .92, .88);
+    add(bear, poly(.58), furMat, .55, 1.35, 0, 1.15, 1.08, 1.0);
+    add(bear, poly(.62), furMat, -.88, 1.18, 0, 1.08, .94, .92);
+    add(bear, poly(.42), furMat, .92, 1.36, 0, .9, .92, .86);
+
+    // Head, muzzle, ears, eyes and nose.
+    const head = add(bear, poly(.5), furMat, 1.33, 1.48, 0, 1.08, .95, .92);
+    add(bear, poly(.28), accentMat, 1.78, 1.33, 0, 1.35, .75, .84);
+    add(bear, poly(.13), furMat, 1.18, 1.85, -.29, 1, 1.05, .9);
+    add(bear, poly(.13), furMat, 1.18, 1.85, .29, 1, 1.05, .9);
+    add(bear, new THREE.SphereGeometry(.045, 8, 6), darkMat, 1.66, 1.55, -.29, 1.0, .8, .8);
+    add(bear, new THREE.SphereGeometry(.045, 8, 6), darkMat, 1.66, 1.55, .29, 1.0, .8, .8);
+    add(bear, poly(.09), darkMat, 2.08, 1.32, 0, 1.35, .82, .92);
+
+    // Tiny tail.
+    add(bear, poly(.14), furMat, -1.52, 1.22, 0, .9, .9, .9);
+
+    // Each leg is a pivot group so the walking cycle can swing naturally.
+    const legs = [];
+    const makeLeg = (x, z, front, phase) => {
+      const pivot = new THREE.Group();
+      pivot.position.set(x, .93, z); bear.add(pivot);
+      add(pivot, new THREE.CylinderGeometry(.22, .19, .68, 7), furMat, 0, -.34, 0, front ? 1.0 : 1.08, 1, 1.0);
+      add(pivot, new THREE.CylinderGeometry(.17, .14, .56, 7), accentMat, .03, -.88, 0, .95, 1, .94);
+      const paw = add(pivot, poly(.18), furMat, .14, -1.17, 0, 1.45, .55, 1.02);
+      paw.rotation.z = -.08;
+      for (let c = 0; c < 3; c++) {
+        const claw = add(pivot, new THREE.ConeGeometry(.025, .11, 5), clawMat,
+          .28 + c * .045, -1.22, (c - 1) * .055, .8, 1, .8);
+        claw.rotation.z = -Math.PI / 2;
+      }
+      pivot.userData.phase = phase; legs.push(pivot);
+    };
+    makeLeg(.67, -.43, true, 0);
+    makeLeg(.67, .43, true, Math.PI);
+    makeLeg(-.83, -.43, false, Math.PI);
+    makeLeg(-.83, .43, false, 0);
+
+    bear.scale.setScalar(size);
+    bear.userData = { head, legs, baseScale: size };
+    return bear;
+  };
+
+  const snowBear = makeBear('Snow bear', '#d8ddd9', '#c5cbc8', .88);
+  snowBear.position.set(-11.5, terrainHeight(-11.5, -4.8), -4.8); snowBear.rotation.y = .55; snowBear.visible = false; world.add(snowBear);
+  const polarBear = makeBear('Polar bear', '#f7f5ec', '#e8e7df', 1.14);
+  polarBear.position.set(14.5, terrainHeight(14.5, 10.7), 10.7); polarBear.rotation.y = -2.45; polarBear.visible = false; world.add(polarBear);
+  const honeyBear = makeBear('Honey bear', '#6f4828', '#a87843', 1.02);
+  honeyBear.position.set(8.8, terrainHeight(8.8, -14.2), -14.2); honeyBear.rotation.y = 2.4; honeyBear.visible = false; world.add(honeyBear);
+  const bears = [snowBear, polarBear, honeyBear];
+
+  const animateBear = (bear, time, speed = 1, amount = .17) => {
+    if (!bear.visible) return;
+    bear.userData.legs.forEach((leg, index) => {
+      const swing = Math.sin(time * 2.5 * speed + leg.userData.phase) * amount;
+      leg.rotation.z = swing;
+      leg.rotation.x = Math.sin(time * 1.25 * speed + index) * .025;
+    });
+    bear.userData.head.rotation.z = Math.sin(time * .8 * speed) * .035;
+    bear.position.y += Math.abs(Math.sin(time * 2.5 * speed)) * .025;
+  };
+
+  // Small birds circle above the forest with a little wing flap and slight randomness.
+  const birdMat = new THREE.MeshStandardMaterial({ map: textures.feather, color: '#d8dee6', roughness: .9, side: THREE.DoubleSide, emissive: '#2f3440', emissiveIntensity: .08 });
+  const birds = [];
+  const birdCount = 7;
+  for (let i = 0; i < birdCount; i++) {
+    const group = new THREE.Group(); group.name = `Bird ${i + 1}`;
+    const body = new THREE.Mesh(new THREE.SphereGeometry(.12, 10, 10), birdMat);
+    body.castShadow = body.receiveShadow = true; group.add(body);
+    const leftWing = new THREE.Mesh(new THREE.PlaneGeometry(.46, .2), birdMat);
+    leftWing.position.set(-.12, 0, .16); leftWing.rotation.y = Math.PI / 2; leftWing.rotation.z = .1; leftWing.castShadow = true; group.add(leftWing);
+    const rightWing = new THREE.Mesh(new THREE.PlaneGeometry(.46, .2), birdMat);
+    rightWing.position.set(-.12, 0, -.16); rightWing.rotation.y = -Math.PI / 2; rightWing.rotation.z = -.1; rightWing.castShadow = true; group.add(rightWing);
+    const tail = new THREE.Mesh(new THREE.PlaneGeometry(.18, .14), birdMat);
+    tail.position.set(-.23, -.01, 0); tail.rotation.y = Math.PI / 2; group.add(tail);
+    group.userData = {
+      wings: [leftWing, rightWing],
+      radius: 16 + rng() * 16,
+      speed: .14 + rng() * .16,
+      height: 6.5 + rng() * 7.5,
+      centerX: (rng() - .5) * 18,
+      centerZ: (rng() - .5) * 18,
+      phase: rng() * Math.PI * 2,
+      bob: .35 + rng() * .55
+    };
+    birds.push(group); world.add(group);
+  }
+
   return {
     world, foliage, blossoms, petals, water, trunks, ground, snow, textures,
-    counts: { trees: treeSites.length, cliffs: cliffSites.length, leaves: leaves.length },
+    counts: { trees: treeSites.length, cliffs: cliffSites.length, leaves: leaves.length, birds: birdCount, bears: 3 },
     update(dt, time, season) {
       const phase = season.phase;
       const phaseSection = Math.floor(phase);
@@ -368,6 +477,57 @@ export function buildWorld(scene, textures, shared) {
         }
         snowGeo.attributes.position.needsUpdate = true;
       }
+
+      const snowWeather = smoothstep(.2, .85, season.winter);
+      const deepWinter = smoothstep(.55, .95, season.winter);
+      const summerStrength = smoothstep(.88, 1.15, phase) * (1 - smoothstep(1.88, 2.18, phase));
+      snowBear.visible = snowWeather > .08;
+      polarBear.visible = deepWinter > .08;
+      honeyBear.visible = summerStrength > .08;
+      if (snowBear.visible) {
+        snowBear.position.x = -11.5 + Math.sin(time * .22) * 1.1;
+        snowBear.position.z = -4.8 + Math.cos(time * .18) * .9;
+        snowBear.position.y = terrainHeight(snowBear.position.x, snowBear.position.z);
+        snowBear.rotation.y = .55 + Math.sin(time * .31) * .35;
+        animateBear(snowBear, time, .92, .14);
+      }
+      if (polarBear.visible) {
+        polarBear.position.x = 14.5 + Math.cos(time * .19) * .95;
+        polarBear.position.z = 10.7 + Math.sin(time * .16) * .75;
+        polarBear.position.y = terrainHeight(polarBear.position.x, polarBear.position.z);
+        polarBear.rotation.y = -2.45 + Math.cos(time * .27) * .28;
+        animateBear(polarBear, time, .75, .12);
+      }
+      if (honeyBear.visible) {
+        honeyBear.position.x = 8.8 + Math.sin(time * .16) * 1.35;
+        honeyBear.position.z = -14.2 + Math.cos(time * .21) * 1.05;
+        honeyBear.position.y = terrainHeight(honeyBear.position.x, honeyBear.position.z);
+        honeyBear.rotation.y = 2.4 + Math.sin(time * .26) * .32;
+        animateBear(honeyBear, time, 1.05, .16);
+      }
+
+      const birdVisibility = 1 - smoothstep(.78, .98, season.winter);
+      birds.forEach((bird, i) => {
+        bird.visible = birdVisibility > .06;
+        if (!bird.visible) return;
+        const data = bird.userData;
+        const angle = data.phase + time * data.speed * Math.PI * 2;
+        const wideDrift = Math.sin(time * .13 + i * 1.4) * 2.6 + Math.cos(time * .07 + i * 2.1) * 1.4;
+        const radiusX = data.radius + Math.sin(time * .09 + i) * 2.4;
+        const radiusZ = data.radius * (.65 + 0.18 * Math.sin(time * .11 + i * .7));
+        bird.position.set(
+          data.centerX + Math.cos(angle) * radiusX + Math.sin(time * .24 + i) * 1.3,
+          data.height + Math.sin(angle * 1.7 + i) * data.bob + .8 * Math.sin(time * .7 + i * .8),
+          data.centerZ + Math.sin(angle) * radiusZ + wideDrift
+        );
+        const nextX = data.centerX + Math.cos(angle + .06) * radiusX;
+        const nextZ = data.centerZ + Math.sin(angle + .06) * radiusZ + wideDrift;
+        bird.rotation.y = Math.atan2(nextX - bird.position.x, nextZ - bird.position.z);
+        bird.rotation.z = Math.sin(time * 2 + i) * .08;
+        const flap = Math.sin(time * 10 + data.phase * 7) * .8;
+        data.wings[0].rotation.x = flap;
+        data.wings[1].rotation.x = -flap;
+      });
     }
   };
 }
