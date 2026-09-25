@@ -1,0 +1,13 @@
+Forest 17 - Node-only project status
+====================================
+
+Python dependency: REMOVED
+Local server: server.mjs (Node.js built-in HTTP server)
+Build tool: tools/build_dist.mjs (Node.js)
+Tests: tools/test_math.mjs
+Three.js: pinned CDN loader in src/three.js
+
+Commands:
+  npm start
+  npm test
+  npm run build

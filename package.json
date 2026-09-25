@@ -1,0 +1,16 @@
+{
+  "name": "computergraphics3js-forest17",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "description": "CSE4204 Topic 17 - A Forest, built with Three.js and custom GLSL shaders",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlasterOverlord/computerGraphics3js.git"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node tools/test_math.mjs",
+    "build": "node tools/build_dist.mjs"
+  }
+}

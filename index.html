@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#d7e0d3">
+<title>A Forest | Topic 17 | CSE4204</title>
+<meta name="description" content="An interactive Three.js seasonal forest: textured trees and cliffs, custom GLSL shaders, lighting and keyboard/mouse interaction.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main id="scene" aria-label="3D forest scene"></main>
+<header class="brand hideable">
+ <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 28 34" fill="none" stroke="currentColor" stroke-width="1.15"><path d="M14 31V4M14 5L6 14h5L3 24h22l-8-10h5L14 5ZM9 31h10"/></svg></div>
+ <div><div class="brand-name">SYLVA</div><div class="brand-sub"></div></div>
+</header>
+<section class="hero hideable">
+ <div class="eyebrow">FIELD STUDY &nbsp; / &nbsp; NO. 17</div>
+ <h1>A living<br><em>forest.</em></h1>
+ <p>A little world, moving through time.<br>Follow the river. Watch the leaves.<br>Find your own point of view.</p>
+ <div class="hero-tags"><span id="tree-count">30 TREES</span><i></i><span>4 SEASONS</span><i></i><span>ONE WORLD</span></div>
+</section>
+<nav class="top-tools" aria-label="Scene tools">
+ <span class="top-code hideable">CSE4204 &nbsp; / &nbsp; THREE.JS</span>
+ <button class="tool optional hideable" id="tour" aria-pressed="false" title="Toggle a slow camera orbit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="5"/><path d="m17 4 3 3-4 1"/></svg><span class="tool-label">Tour</span></button>
+ <button class="tool hideable" id="help-open" title="Open controls and project information" aria-label="Help">?</button>
+ <button class="tool" id="hide-ui" title="Hide or show interface (H)"><span id="hide-label">Hide UI</span></button>
+</nav>
+<aside class="panel hideable" aria-label="Forest controls">
+ <div class="status"><span id="live-dot" class="status-dot"></span><span id="status-text">SEASON CYCLE LIVE</span></div>
+ <div class="season-heading"><h2 id="season-name">Spring</h2><span class="season-seal" aria-hidden="true">s.</span></div>
+ <p class="season-description" id="season-description">Fresh leaves, soft light, new beginnings.</p>
+ <div class="seasons" aria-label="Choose season; manual selection pauses the cycle">
+  <button class="season-button" data-season="0" aria-pressed="true"><span aria-hidden="true">&#10047;</span>Spring</button>
+  <button class="season-button" data-season="1" aria-pressed="false"><span aria-hidden="true">&#9728;</span>Summer</button>
+  <button class="season-button" data-season="2" aria-pressed="false"><span aria-hidden="true">&#10043;</span>Autumn</button>
+  <button class="season-button" data-season="3" aria-pressed="false"><span aria-hidden="true">&#10052;</span>Winter</button>
+ </div>
+ <div class="progress-track" aria-hidden="true"><div class="progress-fill" id="year-progress"></div></div>
+ <div class="meta-row"><span id="year-duration">A YEAR IN 80 SECONDS</span><span id="phase-value">18% to Summer</span></div>
+ <div class="divider"></div>
+ <div class="section-title">LIGHT &amp; ATMOSPHERE <span id="light-name">Daylight</span></div>
+ <div class="light-palette" aria-label="Light color presets">
+  <button class="swatch" style="--swatch:#f2dfae" data-light="0" aria-label="Daylight" title="Daylight" aria-pressed="true"></button>
+  <button class="swatch" style="--swatch:#dba167" data-light="1" aria-label="Golden hour" title="Golden hour" aria-pressed="false"></button>
+  <button class="swatch" style="--swatch:#9cbbd1" data-light="2" aria-label="Moonlight" title="Moonlight" aria-pressed="false"></button>
+  <button class="swatch" style="--swatch:#cfa4af" data-light="3" aria-label="Rose dusk" title="Rose dusk" aria-pressed="false"></button>
+  <button class="swatch" style="--swatch:#a5c6ab" data-light="4" aria-label="Mint glow" title="Mint glow" aria-pressed="false"></button>
+ </div>
+ <div class="light-hint">Click the forest to cycle the light.<br>Drag to discover another angle.</div>
+ <div class="divider"></div>
+ <div class="speed-row"><label for="speed">PASSAGE OF TIME</label><output id="speed-value" for="speed">1.0x</output></div>
+ <input type="range" id="speed" min="0.2" max="3" value="1" step="0.1" aria-label="Season cycle speed">
+ <button id="play" class="play-button" aria-pressed="true"><span id="play-icon" class="play-icon" aria-hidden="true">II</span><span id="play-text">Pause cycle</span></button>
+ <div class="panel-footer"><span id="fps">WEBGL 2</span><label class="sr-only" for="quality">Rendering quality</label><select id="quality"><option value="high">High quality</option><option value="low">Performance</option></select></div>
+</aside>
+<div class="bottom-note hideable"><strong>LEAVE NOTHING BUT FOOTSTEPS.</strong><br>A PROCEDURAL LANDSCAPE / 2026</div>
+<nav class="bottom-bar hideable" aria-label="Camera controls">
+ <div class="control-item"><kbd>W A S D</kbd><span>Move</span></div>
+ <div class="control-item"><kbd>&larr; &uarr; &darr; &rarr;</kbd><span>Look</span></div>
+ <div class="control-item"><kbd>Q / E</kbd><span>Height</span></div>
+ <div class="control-item"><b>Drag</b><span>Orbit</span></div>
+ <div class="control-item"><b>Scroll</b><span>Zoom</span></div>
+ <div class="bar-divider"></div>
+ <button class="icon-button" id="close-view" title="Riverside close view" aria-label="Riverside close view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><circle cx="12" cy="12" r="3"/></svg></button>
+ <button class="icon-button" id="reset" title="Reset camera (R)" aria-label="Reset camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M5 9a8 8 0 1 1-1 6M5 4v5h5"/></svg></button>
+</nav>
+<div class="bottom-right hideable">REAL-TIME SEASONAL SHADERS<span><b id="leaf-count">10,000</b> INSTANCED LEAVES</span></div>
+<div id="toast"></div><div id="announcement" class="sr-only" aria-live="polite"></div>
+<dialog id="help">
+ <button id="help-close" class="dialog-close" aria-label="Close help">&times;</button>
+ <div class="eyebrow">CSE4204 &nbsp; / &nbsp; TOPIC 17</div><h2>Find your way.</h2>
+ <p>The forest changes on its own. Use the controls to move through the scene, choose a season, or change the actual scene lighting.</p>
+ <table><tbody>
+  <tr><td>W / A / S / D</td><td>Move the camera's viewing area</td></tr>
+  <tr><td>Arrow keys</td><td>Orbit left/right and tilt up/down</td></tr>
+  <tr><td>Q / E &middot; Shift</td><td>Lower/raise camera &middot; move faster</td></tr>
+  <tr><td>Mouse drag &middot; wheel</td><td>Orbit &middot; zoom in/out</td></tr>
+  <tr><td>Click the forest</td><td>Cycle the light color</td></tr>
+  <tr><td>1 / 2 / 3 / 4</td><td>Select Spring / Summer / Autumn / Winter</td></tr>
+  <tr><td>Space</td><td>Pause/resume seasonal progression</td></tr>
+  <tr><td>R &middot; H &middot; L</td><td>Reset camera &middot; hide UI &middot; cycle light</td></tr>
+ </tbody></table>
+ <p>Manual season selection pauses the cycle; press <strong>Resume cycle</strong> to continue. Wind and water remain animated. At 1x, a full year takes 80 seconds. Performance mode switches off shadow maps.</p>
+ <p>All landscape geometry and image textures are generated in code. Foliage and river use custom GLSL shaders. A perspective camera and real scene lights complete the graphics pipeline.</p>
+</dialog>
+<div id="loading" class="loading" role="status">
+ <div class="loading-inner"><div class="spinner"></div><div class="eyebrow" style="justify-content:center;margin-top:24px">SYLVA / FIELD STUDY 17</div><div id="loading-title" class="loading-title">Growing a little world.</div><p id="loading-copy" class="loading-copy">Loading Three.js and preparing the forest.<br>The standard edition needs an internet connection.</p><div id="error-details" class="error-details"></div><button class="retry" onclick="location.reload()">Try again</button></div>
+</div>
+<noscript>This project needs JavaScript enabled in your browser.</noscript>
+<script>
+window.reportForestError = function (error) {
+ console.error(error);
+ var loading = document.getElementById('loading'); loading.hidden = false; loading.classList.remove('loaded'); loading.classList.add('error');
+ document.getElementById('loading-title').textContent = 'The forest could not start.';
+ document.getElementById('loading-copy').textContent = 'Use a WebGL 2 capable browser with graphics acceleration enabled.';
+ document.getElementById('error-details').textContent = error && error.message ? error.message : String(error);
+};
+</script>
+<script type="module">import("./src/main.js").catch(window.reportForestError);</script>
+</body>
+</html>
